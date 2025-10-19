@@ -1,0 +1,5 @@
+Analyze this machine learning training script:
+
+**SCRIPT CONFIGURATION:**
+
+{USER_SCRIPT}

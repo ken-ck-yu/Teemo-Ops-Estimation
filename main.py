@@ -10,6 +10,7 @@ from file_writer import write_file_content
 from gemini_estimation import run_estimation
 from google_cloud_utility import get_secret
 
+TEEMO_VERSION = "1.0.0"
 # Configuration
 GEMINI_MODEL = 'gemini-2.0-flash-exp'
 SYSTEM_PROMPT = 'prompts/system_prompt.txt'
@@ -33,7 +34,8 @@ def health_check():
     """Health check endpoint for Cloud Run"""
     return jsonify({
         'status': 'healthy',
-        'service': 'ml-training-estimation'
+        'service': 'ml-training-estimation',
+        'version': TEEMO_VERSION
     }), 200
 
 

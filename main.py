@@ -10,11 +10,13 @@ from file_writer import write_file_content
 from gemini_estimation import run_estimation
 from google_cloud_utility import get_secret
 
-TEEMO_VERSION = "1.0.0"
-# Configuration
+TEEMO_VERSION = "1.0.1"
+
+# Configuration - Use absolute paths for Cloud Run reliability
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GEMINI_MODEL = 'gemini-2.0-flash-exp'
-SYSTEM_PROMPT = 'prompts/system_prompt.txt'
-USER_PROMPT_TEMPLATE = 'prompts/user_prompt_template.txt'
+SYSTEM_PROMPT = os.path.join(BASE_DIR, 'prompts', 'system_prompt.txt')
+USER_PROMPT_TEMPLATE = os.path.join(BASE_DIR, 'prompts', 'user_prompt_template.txt')
 
 app = Flask(__name__)
 
@@ -24,9 +26,18 @@ try:
         secret_id="gemini_api_key",
         project_id="587897013083"
     )
+    print("✓ Successfully loaded Gemini API key from Secret Manager")
 except Exception as e:
-    print(f"Warning: Failed to load API key from Secret Manager: {e}")
+    print(f"✗ Warning: Failed to load API key from Secret Manager: {e}")
     GEMINI_API_KEY = None
+
+# Verify prompt files exist at startup
+print(f"Teemo version: {TEEMO_VERSION}")
+print(f"Checking prompt files...")
+print(f"  System prompt: {SYSTEM_PROMPT}")
+print(f"  Exists: {os.path.exists(SYSTEM_PROMPT)}")
+print(f"  User prompt template: {USER_PROMPT_TEMPLATE}")
+print(f"  Exists: {os.path.exists(USER_PROMPT_TEMPLATE)}")
 
 
 @app.route('/health', methods=['GET'])

@@ -55,6 +55,16 @@ SERVICE_URL=$(gcloud run services describe ml-training-estimator \
 curl $SERVICE_URL/health
 ```
 
+```
+curl -X POST "https://teemo-ops-estimation-587897013083.europe-west1.run.app/estimate" \
+-H "Authorization: bearer $(gcloud auth print-identity-token)" \
+-H "Content-Type: application/json" \
+-d '{
+  "params_path": "gs://teemo-ops-extract-output/sample-input-script-short.txt",
+  "output_path": "gs://teemo-ops-estimate-output",
+  "debug": true
+}'
+```
 ---
 
 ## API Usage

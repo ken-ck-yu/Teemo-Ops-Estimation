@@ -104,8 +104,8 @@ def estimate():
             debug=debug,
             api_key=GEMINI_API_KEY,
             model=GEMINI_MODEL,
-            system_prompt=SYSTEM_PROMPT,
-            user_prompt_template=USER_PROMPT_TEMPLATE
+            system_prompt_path=SYSTEM_PROMPT,
+            user_prompt_template_path=USER_PROMPT_TEMPLATE
         )
         
         if success:

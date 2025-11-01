@@ -5,6 +5,7 @@ Designed to run on Google Cloud Run
 
 import os
 from flask import Flask, request, jsonify
+from urllib.parse import urlparse
 from file_reader import read_file_content
 from file_writer import write_file_content
 from gemini_estimation import run_estimation
@@ -58,7 +59,7 @@ def estimate():
     Request body:
     {
         "params_path": "gs://bucket/params.txt",
-        "output_path": "gs://bucket/output.json",
+        "output_path": "gs://bucket/path/output.json",
         "debug": false
     }
     
@@ -78,6 +79,8 @@ def estimate():
                 'message': 'No JSON data provided'
             }), 400
         
+        print(f"Received request: {data}")
+        
         # Get parameters path (required)
         params_path = data.get('params_path')
         if not params_path:
@@ -86,8 +89,11 @@ def estimate():
                 'message': 'params_path is required'
             }), 400
         
+        print(f"Parameters path: {params_path}")
+        
         # Read parameters content from GCS
         params_content = read_file_content(params_path)
+        print(f"✓ Read {len(params_content)} characters from params file")
         
         # Get output path (required)
         output_path = data.get('output_path')
@@ -96,6 +102,37 @@ def estimate():
                 'status': 'error',
                 'message': 'output_path is required'
             }), 400
+        
+        # Validate output path format
+        print(f"Validating output path: {output_path}")
+        
+        if not output_path.startswith('gs://'):
+            return jsonify({
+                'status': 'error',
+                'message': f'output_path must start with gs://, got: {output_path}'
+            }), 400
+        
+        # Parse and validate
+        parsed = urlparse(output_path)
+        bucket_name = parsed.netloc
+        blob_path = parsed.path.lstrip('/')
+        
+        if not bucket_name:
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid output_path - missing bucket name. Format: gs://bucket/path/file.json'
+            }), 400
+        
+        if not blob_path:
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid output_path - missing file name. Got: {output_path}. Expected: gs://{bucket_name}/path/file.json'
+            }), 400
+        
+        print(f"✓ Output path validated:")
+        print(f"  Bucket: {bucket_name}")
+        print(f"  Object: {blob_path}")
+        print(f"  Full path: {output_path}")
         
         # Check API key from Secret Manager
         if not GEMINI_API_KEY:
@@ -106,8 +143,10 @@ def estimate():
         
         # Get debug flag
         debug = data.get('debug', False)
+        print(f"Debug mode: {debug}")
         
         # Run estimation
+        print("Starting estimation...")
         success = run_estimation(
             provider='gemini',
             params_content=params_content,
@@ -120,18 +159,23 @@ def estimate():
         )
         
         if success:
+            print(f"✅ Estimation completed successfully!")
             return jsonify({
                 'status': 'success',
                 'message': 'Estimation completed successfully',
                 'output_path': output_path
             }), 200
         else:
+            print(f"❌ Estimation failed")
             return jsonify({
                 'status': 'error',
-                'message': 'Estimation failed'
+                'message': 'Estimation failed - check logs for details'
             }), 500
             
     except Exception as e:
+        print(f"Error in estimate endpoint: {e}")
+        import traceback
+        print(traceback.format_exc())
         return jsonify({
             'status': 'error',
             'message': str(e)
@@ -143,7 +187,7 @@ def root():
     """Root endpoint with API documentation"""
     return jsonify({
         'service': 'ML Training Resource Estimation API',
-        'version': '1.0.0',
+        'version': TEEMO_VERSION,
         'endpoints': {
             '/health': 'GET - Health check',
             '/estimate': 'POST - Run estimation',
@@ -153,9 +197,19 @@ def root():
             'method': 'POST',
             'url': '/estimate',
             'body': {
-                'params_path': 'Path to parameters file (gs://bucket/path)',
-                'output_path': 'Output path (gs://bucket/path)',
-                'debug': 'Optional debug flag'
+                'params_path': 'gs://bucket/path/to/script.txt',
+                'output_path': 'gs://bucket/path/to/output.json',
+                'debug': 'true or false (optional)'
+            },
+            'example': {
+                'params_path': 'gs://teemo-ops-extract-output/sample-input-script.txt',
+                'output_path': 'gs://teemo-ops-estimate-output/results/output.json',
+                'debug': False
             }
         }
     }), 200
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
